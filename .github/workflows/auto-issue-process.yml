@@ -44,7 +44,7 @@ jobs:
         with:
           script: |
             const type = '${{ steps.parse.outputs.type }}';
-            const mapping = { bug: 'alice', enhancement: 'bob', question: 'charlie' };
+            const mapping = { bug: 'jonghwa-yim', enhancement: 'bob', question: 'charlie' };
             const assignee = mapping[type];
             if (assignee) {
               await github.rest.issues.addAssignees({
