@@ -41,6 +41,9 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
+            const comment = context.payload.comment.body;
+            let data;
+            data = JSON.parse(comment);
             const issue = context.payload.issue;
             const mapping = { bug: 'alice', enhancement: 'bob', question: 'charlie' };
             const assignee = mapping[data.type];
