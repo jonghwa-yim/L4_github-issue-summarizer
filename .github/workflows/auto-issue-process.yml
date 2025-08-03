@@ -1,0 +1,57 @@
+# This is a basic workflow to help you get started with Actions
+
+name: 'Auto Process Issues'
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  types: [created]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  process-issue:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Parse comment
+        id: parse
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const comment = context.payload.comment.body;
+            // JSON 포맷 코멘트 파싱
+            const data = JSON.parse(comment);
+            return data;
+      - name: Handle priority
+        if: steps.parse.outputs.data.priority == 'high'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // High Priority인 경우 Slack 알림 전송
+            const issue = context.payload.issue;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: '!! 이슈 우선순위가 HIGH 입니다. 즉시 확인해주세요.!!'
+            });
+      - name: Assign based on type
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const type = steps.parse.outputs.data.type;
+            const mapping = { bug: 'alice', enhancement: 'bob', question: 'charlie' };
+            const assignee = mapping[type] || null;
+            if (assignee) {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                assignees: [assignee]
+              });
+            }
