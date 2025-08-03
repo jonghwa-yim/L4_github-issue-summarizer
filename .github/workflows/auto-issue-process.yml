@@ -42,14 +42,13 @@ jobs:
         with:
           script: |
             const issue = context.payload.issue;
-            const type = steps.parse.outputs.data.type;
             const mapping = { bug: 'alice', enhancement: 'bob', question: 'charlie' };
-            const assignee = mapping[type] || null;
+            const assignee = mapping[data.type];
             if (assignee) {
               await github.rest.issues.addAssignees({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                assignees: [assignee]
+                assignees: [assignee],
               });
             }
