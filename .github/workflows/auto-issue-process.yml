@@ -1,22 +1,15 @@
-# This is a basic workflow to help you get started with Actions
-
 name: 'Auto Process Issues'
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   issue_comment:
     types: [created]
 
 permissions:
   issues: write
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   process-issue:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Parse comment
         id: parse
@@ -24,37 +17,40 @@ jobs:
         with:
           script: |
             const comment = context.payload.comment.body;
-            // JSON 포맷 코멘트 파싱
-            const data = JSON.parse(comment);
-            return data;
-      - name: Handle priority
-        if: steps.parse.outputs.data.priority == 'high'
+            let data;
+            try {
+              data = JSON.parse(comment);
+            } catch (err) {
+              core.setFailed("JSON 파싱 실패: " + err.message);
+              return;
+            }
+            core.setOutput("priority", data.priority || "undefined");
+            core.setOutput("type", data.type || "undefined");
+            core.setOutput("summary", data.Summary || "");
+      - name: Handle high priority
+        if: steps.parse.outputs.priority == 'high'
         uses: actions/github-script@v6
         with:
           script: |
-            // High Priority인 경우 Slack 알림 전송
             const issue = context.payload.issue;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
-              body: '!! 이슈 우선순위가 HIGH 입니다. 즉시 확인해주세요.!!'
+              body: '!!이슈 우선순위가 **HIGH** 입니다. 즉시 확인 바랍니다.'
             });
       - name: Assign based on type
         uses: actions/github-script@v6
         with:
           script: |
-            const comment = context.payload.comment.body;
-            let data;
-            data = JSON.parse(comment);
-            const issue = context.payload.issue;
+            const type = '${{ steps.parse.outputs.type }}';
             const mapping = { bug: 'alice', enhancement: 'bob', question: 'charlie' };
-            const assignee = mapping[data.type];
+            const assignee = mapping[type];
             if (assignee) {
               await github.rest.issues.addAssignees({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: issue.number,
+                issue_number: context.issue.number,
                 assignees: [assignee],
               });
             }
